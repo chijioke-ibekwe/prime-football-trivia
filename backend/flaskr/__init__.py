@@ -4,6 +4,17 @@ from flask_cors import CORS
 
 from models import setup_db, Question, Option
 
+QUESTIONS_PER_PAGE = 10
+
+def paginate_questions(request, selection):
+    page = request.args.get('page', 1, type=int)
+    start = (page - 1) * QUESTIONS_PER_PAGE
+    end = start + QUESTIONS_PER_PAGE
+    formatted_questions = [question.format() for question in selection]
+    current_questions = formatted_questions[start:end]
+
+    return current_questions
+
 def create_app(test_config=None):
     app = Flask(__name__)
     setup_db(app)
@@ -39,5 +50,18 @@ def create_app(test_config=None):
             })
         except:
             abort(422)
+
+    @app.route('/questions', methods=['GET'])
+    def get_all_questions():
+        questions = Question.query.order_by(Question.id).all()
+        current_questions = paginate_questions(request, questions)
+
+        if len(current_questions) == 0:
+            abort(404)
+
+        return jsonify({
+            'questions': current_questions,
+            'totalQuestions': len(questions)
+        })
 
     return app

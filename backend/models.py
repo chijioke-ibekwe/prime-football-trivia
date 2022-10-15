@@ -52,6 +52,7 @@ class Question(db.Model):
         return {
             'id': self.id,
             'question': self.question,
+            'options': self.options,
             'answer': self.answer,
             'difficulty': self.difficulty
             }
