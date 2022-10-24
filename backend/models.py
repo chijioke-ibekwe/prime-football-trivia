@@ -48,11 +48,11 @@ class Question(db.Model):
         db.session.delete(self)
         db.session.commit()
 
-    def format(self):
+    def format(self, options):
         return {
             'id': self.id,
             'question': self.question,
-            'options': self.options,
+            'options': options,
             'answer': self.answer,
             'difficulty': self.difficulty
             }
@@ -81,11 +81,3 @@ class Option(db.Model):
     def delete(self):
         db.session.delete(self)
         db.session.commit()
-
-    def format(self):
-        return {
-            'id': self.id,
-            'option': self.option,
-            'letter': self.letter,
-            'question_id': self.question_id
-            }

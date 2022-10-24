@@ -10,7 +10,14 @@ def paginate_questions(request, selection):
     page = request.args.get('page', 1, type=int)
     start = (page - 1) * QUESTIONS_PER_PAGE
     end = start + QUESTIONS_PER_PAGE
-    formatted_questions = [question.format() for question in selection]
+    formatted_questions = []
+
+    for question in selection:
+        formatted_options = {}
+        for option in question.options:
+            formatted_options[option.letter] = option.option
+        formatted_questions.append(question.format(formatted_options))
+
     current_questions = formatted_questions[start:end]
 
     return current_questions
@@ -54,6 +61,7 @@ def create_app(test_config=None):
     @app.route('/questions', methods=['GET'])
     def get_all_questions():
         questions = Question.query.order_by(Question.id).all()
+
         current_questions = paginate_questions(request, questions)
 
         if len(current_questions) == 0:
