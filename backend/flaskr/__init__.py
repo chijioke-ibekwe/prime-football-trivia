@@ -1,3 +1,4 @@
+import math
 from flask import Flask, request, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
@@ -22,8 +23,30 @@ def paginate_questions(request, selection):
 
     return current_questions
 
+def to_response_object(data, total_size, request, message):
+    page = {'size': QUESTIONS_PER_PAGE,
+    'totalElements': total_size,
+    'totalPages': math.ceil(total_size/QUESTIONS_PER_PAGE),
+    'number': request.args.get('page', 1, type=int)}
+
+    if request.method == 'GET':
+        return jsonify({
+            'status': 'Successful',
+            'message': message,
+            'data': data,
+            'page': page
+        })
+    else: 
+        return jsonify({
+            'status': 'Successful',
+            'message': message,
+            'data': data
+        })
+
+
 def create_app(test_config=None):
     app = Flask(__name__)
+    app.config['JSON_SORT_KEYS'] = False
     setup_db(app)
 
     CORS(app)
@@ -41,9 +64,13 @@ def create_app(test_config=None):
     @app.route('/questions', methods=['POST'])
     def create_question():
         payload = request.get_json()
+        option_data = payload.get('options')
+
+        if len(option_data.items()) != 4:
+            abort(400, 'Number of options provided must be 4')
         try:
             question = Question(question=payload.get('question'), answer=payload.get('answer'), difficulty=int(payload.get('difficulty'))) 
-            option_data = payload.get('options')
+
             id = question.insert()
 
             for key, value in option_data.items():
@@ -51,12 +78,30 @@ def create_app(test_config=None):
                 option.insert()
             
             questions = Question.query.all()
+            totalQuestions = {}
+            totalQuestions['id'] = id
+            totalQuestions['totalQuestions'] = len(questions)
 
-            return jsonify({
-                'totalQuestions': len(questions),
-            })
+            return to_response_object(totalQuestions, 0, request, 'Question created successfully')
         except:
             abort(422)
+
+    @app.route('/questions/<int:question_id>', methods=['GET'])
+    def get_question(question_id):
+        question = Question.query.filter(Question.id == question_id).one_or_none()
+
+        if question is None:
+            abort(404, 'Question not found')
+
+        questions = []
+        questions.append(question)
+
+        current_questions = paginate_questions(request, questions)
+
+        if len(current_questions) == 0:
+            abort(404, 'Question not found')
+
+        return to_response_object(current_questions, len(questions), request, None)
 
     @app.route('/questions', methods=['GET'])
     def get_all_questions():
@@ -64,26 +109,84 @@ def create_app(test_config=None):
 
         current_questions = paginate_questions(request, questions)
 
-        if len(current_questions) == 0:
-            abort(404)
+        # if len(current_questions) == 0:
+        #     abort(404)
 
-        return jsonify({
-            'questions': current_questions,
-            'totalQuestions': len(questions)
-        })
+        return to_response_object(current_questions, len(questions), request, None)
+
+    @app.route('/questions/<int:question_id>', methods=['PATCH'])
+    def update_question(question_id):
+        question = Question.query.filter(Question.id == question_id).one_or_none()
+        option_data = {}
+
+        if question is None:
+            abort(404, 'Question not found')
+            
+        payload = request.get_json()
+        try:
+            if payload.get('question'):
+                question.question = payload.get('question')
+
+            if payload.get('answer'):
+                question.answer = payload.get('answer')
+
+            if payload.get('difficulty'):
+                question.difficulty = int(payload.get('difficulty'))
+
+            id = question.update()
+
+            if payload.get('options'): 
+                option_data = payload.get('options')
+
+                for key, value in option_data.items():
+                    option = Option.query.filter(Option.question_id == question_id, Option.letter == key).one_or_none()
+
+                    if option:
+                        option.option = value
+                        option.update()
+            
+            questions = Question.query.all()
+            totalQuestions = {}
+            totalQuestions['id'] = id
+            totalQuestions['totalQuestions'] = len(questions)
+
+            return to_response_object(totalQuestions, 0, request, 'Question updated successfully')
+        except Exception as e:
+            abort(422, 'An error occurred while processing update')
 
     @app.route('/questions/<int:question_id>', methods=['DELETE'])
     def delete_question(question_id):
         question = Question.query.filter(Question.id == question_id).one_or_none()
 
         if question is None:
-            abort(404)
+            abort(404, 'Question not found')
         
         question.delete()
 
+        return to_response_object(None, 0, request, 'Question deleted successfully')
+
+    @app.errorhandler(400)
+    def client_error(error):
         return jsonify({
-            'status': 'Successful',
-            'message': 'Question deleted successfully'
-        })
+            'status': 'Failed',
+            'message': error.description,
+            'data': None
+        }), 400
+
+    @app.errorhandler(404)
+    def not_found(error):
+        return jsonify({
+            'status': 'Failed',
+            'message': error.description,
+            'data': None
+        }), 404
+
+    @app.errorhandler(422)
+    def unprocessable(error):
+        return jsonify({
+            'status': 'Failed',
+            'message': error.description,
+            'data': None
+        }), 422
 
     return app

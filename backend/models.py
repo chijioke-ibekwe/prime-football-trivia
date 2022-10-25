@@ -27,7 +27,7 @@ class Question(db.Model):
     question = Column(String, nullable=False)
     answer = Column(String, nullable=False)
     difficulty = Column(Integer)
-    options = db.relationship('Option', backref='questions', lazy=False)
+    options = db.relationship('Option', backref='questions', lazy=False, cascade="all, delete-orphan")
 
     def __init__(self, question, answer, difficulty):
         self.question = question
@@ -43,6 +43,9 @@ class Question(db.Model):
 
     def update(self):
         db.session.commit()
+        db.session.refresh(self)
+
+        return self.id
 
     def delete(self):
         db.session.delete(self)
