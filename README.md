@@ -28,7 +28,7 @@ pip install -r requirements.txt
 With Postgres running, create a `prime-football-trivia` database:
 
 ```bash
-createbd prime-football-trivia
+createdb prime-football-trivia
 ```
 
 Populate the database using the `prime-football-trivia.psql` file provided. From the `backend` folder in terminal run:
