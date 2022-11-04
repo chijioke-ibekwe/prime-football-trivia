@@ -1,5 +1,5 @@
 # Prime Football Trivia
-RESTful APIs for a trivia game to test your football knowledge. As a lover of football and having played a number of trivia games online that weren't challenging enough, I was inspired to work on this project. If you think you know football, play the Prime Football Trivia. Frontend component of the application to be integrated soon.
+RESTful APIs for a trivia game to test your football knowledge. As a lover of football and having played a number of trivia games online that weren't challenging enough, I was inspired to work on this project. If you think you know football, play the Prime Football Trivia 😌. Frontend component of the application to be integrated soon.
 
 ## Getting Started
 
