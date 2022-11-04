@@ -2,10 +2,12 @@ import math
 from flask import Flask, request, abort, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+import random
 
 from models import setup_db, Question, Option
 
 QUESTIONS_PER_PAGE = 10
+
 
 def paginate_questions(request, selection):
     page = request.args.get('page', 1, type=int)
@@ -22,6 +24,7 @@ def paginate_questions(request, selection):
     current_questions = formatted_questions[start:end]
 
     return current_questions
+
 
 def to_response_object(data, total_size, request, message):
     page = {'size': QUESTIONS_PER_PAGE,
@@ -61,7 +64,8 @@ def create_app(test_config=None):
         )
         return response
 
-    @app.route('/questions', methods=['POST'])
+
+    @app.route('/api/v1/questions', methods=['POST'])
     def create_question():
         payload = request.get_json()
         option_data = payload.get('options')
@@ -86,7 +90,8 @@ def create_app(test_config=None):
         except:
             abort(422)
 
-    @app.route('/questions/<int:question_id>', methods=['GET'])
+
+    @app.route('/api/v1/questions/<int:question_id>', methods=['GET'])
     def get_question(question_id):
         question = Question.query.filter(Question.id == question_id).one_or_none()
 
@@ -103,18 +108,17 @@ def create_app(test_config=None):
 
         return to_response_object(current_questions, len(questions), request, None)
 
-    @app.route('/questions', methods=['GET'])
+
+    @app.route('/api/v1/questions', methods=['GET'])
     def get_all_questions():
         questions = Question.query.order_by(Question.id).all()
 
         current_questions = paginate_questions(request, questions)
 
-        # if len(current_questions) == 0:
-        #     abort(404)
-
         return to_response_object(current_questions, len(questions), request, None)
 
-    @app.route('/questions/<int:question_id>', methods=['PATCH'])
+
+    @app.route('/api/v1/questions/<int:question_id>', methods=['PATCH'])
     def update_question(question_id):
         question = Question.query.filter(Question.id == question_id).one_or_none()
         option_data = {}
@@ -151,10 +155,11 @@ def create_app(test_config=None):
             totalQuestions['totalQuestions'] = len(questions)
 
             return to_response_object(totalQuestions, 0, request, 'Question updated successfully')
-        except Exception as e:
+        except:
             abort(422, 'An error occurred while processing update')
 
-    @app.route('/questions/<int:question_id>', methods=['DELETE'])
+
+    @app.route('/api/v1/questions/<int:question_id>', methods=['DELETE'])
     def delete_question(question_id):
         question = Question.query.filter(Question.id == question_id).one_or_none()
 
@@ -164,6 +169,37 @@ def create_app(test_config=None):
         question.delete()
 
         return to_response_object(None, 0, request, 'Question deleted successfully')
+
+    
+    @app.route('/api/v1/trivia', methods=['POST'])
+    def get_trivia_question():
+        payload = request.get_json()
+        difficulty = payload.get('difficulty')
+        previous_questions = payload.get('previousQuestions')
+
+        if difficulty == 'EASY':
+            difficulty_level = [1, 2]
+        elif difficulty == 'NORMAL':
+            difficulty_level = [3, 4]
+        elif difficulty == 'HARD':
+            difficulty_level = [5]
+        else:
+            difficulty_level = [1, 2, 3, 4, 5]
+
+        questions = Question.query.filter(Question.difficulty.in_(difficulty_level), ~Question.id.in_(previous_questions)).order_by(Question.id).all()
+        
+        length = len(questions)
+        questions_array = []
+        if length == 0:
+            return to_response_object(questions_array, len(questions_array), request, None)
+
+        random_question = questions[random.randrange(length)]
+        questions_array.append(random_question)
+
+        current_question = paginate_questions(request, questions_array)
+
+        return to_response_object(current_question, length, request, None)
+
 
     @app.errorhandler(400)
     def client_error(error):
